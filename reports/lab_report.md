@@ -2,9 +2,9 @@
 
 ## 1. Team / student
 
-- Name: (fill in)
-- Repo/commit: (fill in)
-- Date: (fill in)
+- Name: Nguyễn Thành Duy - 2A202601599
+- Repo/commit: [Link](https://github.com/Nguyenthanhduy16/Track3-DAY23-NguyenThanhDuy-2A202601599.git)
+- Date: 25/08/2026
 
 ## 2. Architecture
 
