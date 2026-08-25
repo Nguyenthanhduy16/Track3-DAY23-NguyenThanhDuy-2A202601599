@@ -14,7 +14,7 @@ from .state import AgentState
 def build_graph(checkpointer: Any | None = None):
     """Build and compile the LangGraph workflow.
 
-    TODO(student): Build the complete graph with this architecture:
+    Build the complete graph with this architecture:
 
     START → intake → classify → [conditional: route_after_classify]
       simple       → answer → finalize → END
@@ -40,4 +40,58 @@ def build_graph(checkpointer: Any | None = None):
 
     Reference: https://langchain-ai.github.io/langgraph/how-tos/create-react-agent/
     """
-    raise NotImplementedError("TODO(student): build and compile the LangGraph StateGraph")
+    from langgraph.graph import END, START, StateGraph
+
+    from . import nodes, routing
+
+    builder = StateGraph(AgentState)
+
+    builder.add_node("intake", nodes.intake_node)
+    builder.add_node("classify", nodes.classify_node)
+    builder.add_node("tool", nodes.tool_node)
+    builder.add_node("evaluate", nodes.evaluate_node)
+    builder.add_node("answer", nodes.answer_node)
+    builder.add_node("clarify", nodes.ask_clarification_node)
+    builder.add_node("risky_action", nodes.risky_action_node)
+    builder.add_node("approval", nodes.approval_node)
+    builder.add_node("retry", nodes.retry_or_fallback_node)
+    builder.add_node("dead_letter", nodes.dead_letter_node)
+    builder.add_node("finalize", nodes.finalize_node)
+
+    builder.add_edge(START, "intake")
+    builder.add_edge("intake", "classify")
+    builder.add_edge("tool", "evaluate")
+    builder.add_edge("risky_action", "approval")
+    builder.add_edge("answer", "finalize")
+    builder.add_edge("clarify", "finalize")
+    builder.add_edge("dead_letter", "finalize")
+    builder.add_edge("finalize", END)
+
+    builder.add_conditional_edges(
+        "classify",
+        routing.route_after_classify,
+        {
+            "answer": "answer",
+            "tool": "tool",
+            "clarify": "clarify",
+            "risky_action": "risky_action",
+            "retry": "retry",
+        },
+    )
+    builder.add_conditional_edges(
+        "evaluate",
+        routing.route_after_evaluate,
+        {"retry": "retry", "answer": "answer"},
+    )
+    builder.add_conditional_edges(
+        "retry",
+        routing.route_after_retry,
+        {"tool": "tool", "dead_letter": "dead_letter"},
+    )
+    builder.add_conditional_edges(
+        "approval",
+        routing.route_after_approval,
+        {"tool": "tool", "clarify": "clarify"},
+    )
+
+    return builder.compile(checkpointer=checkpointer)
