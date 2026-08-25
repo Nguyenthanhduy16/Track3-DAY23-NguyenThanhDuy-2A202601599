@@ -63,12 +63,28 @@ _FAILURE_MODES_TEXT = """\
    routes to `clarify` instead of `tool`, so a side-effecting action can never
    execute without an explicit approval record in state."""
 
+_EXTENSION_WORK_TEXT = """\
+- **SQLite persistence** (`persistence.py`, `build_checkpointer("sqlite")`):
+  `SqliteSaver(conn)` with WAL mode, keyed by `thread_id` per scenario.
+  Verified a fresh process reconnecting to the same `.db` file recovers the
+  last checkpoint (crash-resume evidence).
+- **Real HITL** (`nodes.py::approval_node`): when `LANGGRAPH_INTERRUPT=true`,
+  `approval_node` calls `langgraph.types.interrupt()` with the proposed action
+  instead of auto-approving. `graph.invoke(...)` returns with `__interrupt__`
+  set; resuming with `graph.invoke(Command(resume={"approved": True, ...}),
+  config=same_thread_config)` continues the graph from that exact point with
+  the human's decision recorded in `approval`. Default behavior (flag unset)
+  is unchanged — mock auto-approval — so `run-scenarios` stays non-interactive.
+- **Graph diagram** (`cli.py::export-diagram`): `agent-lab export-diagram`
+  renders the compiled graph via `graph.get_graph().draw_mermaid()` to
+  `docs/graph_diagram.mmd`, matching the target flow in `docs/LAB_GUIDE.md`."""
+
 _IMPROVEMENT_PLAN_TEXT = """\
-With one more day: replace the mock `approval_node` with a real
-`interrupt()`-based HITL flow gated by `LANGGRAPH_INTERRUPT=true` (see
-`docs/LAB_GUIDE.md` Phase 5), add an LLM-as-judge to `evaluate_node` instead of
-the current "ERROR" substring heuristic, and export the compiled graph as a
-Mermaid diagram (`graph.get_graph().draw_mermaid()`) for the README."""
+With one more day: build the Streamlit approve/reject UI on top of the
+`interrupt()`/`Command(resume=...)` flow already implemented, add an
+LLM-as-judge to `evaluate_node` instead of the current "ERROR" substring
+heuristic, and use `Send()` for parallel tool fan-out on multi-part
+requests."""
 
 
 def render_report(metrics: MetricsReport) -> str:
@@ -144,7 +160,7 @@ def render_report(metrics: MetricsReport) -> str:
     lines.append("")
     lines.append("## 7. Extension work")
     lines.append("")
-    lines.append("- SQLite persistence (`persistence.py`, `build_checkpointer(\"sqlite\")`).")
+    lines.append(_EXTENSION_WORK_TEXT)
     lines.append("")
     lines.append("## 8. Improvement plan")
     lines.append("")

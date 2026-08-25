@@ -11,6 +11,7 @@ LLM REQUIREMENT:
 
 from __future__ import annotations
 
+import os
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -239,9 +240,24 @@ def approval_node(state: AgentState) -> dict:
 
     Return: {"approval": {"approved": bool, "reviewer": str, "comment": str}, "events": [make_event(...)]}
     """
-    decision = ApprovalDecision(
-        approved=True, reviewer="mock-reviewer", comment="auto-approved by lab default"
-    )
+    if os.getenv("LANGGRAPH_INTERRUPT", "").lower() == "true":
+        from langgraph.types import interrupt
+
+        human_response = interrupt(
+            {
+                "proposed_action": state.get("proposed_action"),
+                "question": "Approve this action? Provide {'approved': bool, 'comment': str}.",
+            }
+        )
+        decision = ApprovalDecision(
+            approved=bool(human_response.get("approved", False)),
+            reviewer=human_response.get("reviewer", "human-reviewer"),
+            comment=human_response.get("comment", ""),
+        )
+    else:
+        decision = ApprovalDecision(
+            approved=True, reviewer="mock-reviewer", comment="auto-approved by lab default"
+        )
     approval = decision.model_dump()
     return {
         "approval": approval,

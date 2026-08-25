@@ -52,5 +52,17 @@ def validate_metrics(metrics: Annotated[Path, typer.Option("--metrics")]) -> Non
     typer.echo(f"Metrics valid. success_rate={report.success_rate:.2%}")
 
 
+@app.command("export-diagram")
+def export_diagram(
+    output: Annotated[Path, typer.Option("--output")] = Path("docs/graph_diagram.mmd"),
+) -> None:
+    """Export the compiled graph as a Mermaid diagram (Phase 5 extension)."""
+    graph = build_graph(checkpointer=build_checkpointer("memory"))
+    mermaid = graph.get_graph().draw_mermaid()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(mermaid, encoding="utf-8")
+    typer.echo(f"Wrote Mermaid diagram to {output}")
+
+
 if __name__ == "__main__":
     app()
